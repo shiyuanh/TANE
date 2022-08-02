@@ -6,7 +6,6 @@ import numpy as np
 import math
 import pdb
 
-SUPP_CALIB=True
 class Classifier(nn.Module):
     def __init__(self, args, feat_dim, param_seman, train_weight_base=False):
         super(Classifier, self).__init__()

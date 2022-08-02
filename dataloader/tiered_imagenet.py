@@ -56,10 +56,8 @@ class OpenTiered(Dataset):
         
         self.test_transform = transforms.Compose([transforms.ToTensor(),normalize])
 
-        #pdb.set_trace()
         self.vector_array = {}
         key_map = {'train':'base','test':'novel_test','val':'novel_val'}
-        #root_path = '/data/users/jiawei/Classification/test/tiered-imagenet-wordemb'
         root_path = args.data_root
         for the_file in ['test','train', 'val']:
             file = 'few-shot-wordemb-{}.npz'.format(the_file)

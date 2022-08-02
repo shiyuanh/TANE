@@ -6,7 +6,9 @@ import torch.backends.cudnn as cudnn
 
 from dataloader.dataloader import get_dataloaders
 from architectures.NetworkPre import FeatureNet
+from architectures.GNetworkPre import GFeatureNet
 from trainer.FSEval import run_test_fsl
+from trainer.GFSEval import run_test_gfsl
 import pdb
 import logging
 
@@ -18,16 +20,16 @@ parser = argparse.ArgumentParser('argument for training')
 # General Setting
 parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
 parser.add_argument('--num_workers', type=int, default=3, help='num of workers to use')
-parser.add_argument('--featype', type=str, default='OpenMeta',  help='number of training epochs')
+parser.add_argument('--featype', type=str, default='OpenMeta', choices=['OpenMeta', 'GOpenMeta'], help='type of task: OpenMeta -- FSOR, GOpenMeta --- GFSOR')
 parser.add_argument('--restype', type=str, default='ResNet12', choices=model_pool, help='Network Structure')
-parser.add_argument('--dataset', type=str, default='miniImageNet', choices=['miniImageNet', 'tieredImageNetWord','CIFAR-FS', 'FC100'])
+parser.add_argument('--dataset', type=str, default='miniImageNet', choices=['miniImageNet', 'tieredImageNet'])
 parser.add_argument('--gpus', type=str, default='0')
 
 # Specify folder
 parser.add_argument('--logroot', type=str, default='./logs/', help='path to save model')
-parser.add_argument('--data_root', type=str, default='/home/jiawei/DATA/', help='path to data root')
-parser.add_argument('--test_model_path', type=str, default='exps_1shot/OpenMeta_CIFAR-FS/CIFAR-FS_600_shot_1/max_acc.pth')
-parser.add_argument('--pretrained_model_path', type=str, default='max_meta.pth')
+parser.add_argument('--data_root', type=str, default='data/', help='path to data root')
+parser.add_argument('--test_model_path', type=str, default='max_acc.pth')
+parser.add_argument('--pretrained_model_path', type=str, default='miniImageNet_pre.pth')
 
 # Meta Setting
 parser.add_argument('--n_ways', type=int, default=5, metavar='N', help='Number of classes for doing each classification run')
@@ -41,7 +43,6 @@ parser.add_argument('--n_test_runs', type=int, default=600, metavar='N', help='N
 
 # Network Flow Path
 parser.add_argument('--gamma', type=float, default=2.0, help='loss cofficient for open-mse loss')
-parser.add_argument('--lam', type=float, default=1.0, help='loss cofficient for open-kldiv loss')
 parser.add_argument('--tunefeat', type=float, default=0.0, help='update feature parameter')
 parser.add_argument('--train_weight_base', action='store_true', help='enable training base class weights')
 # Disgarded temporarily
@@ -67,15 +68,25 @@ def eval(args, model, meta_test_loader, config):
     model.eval()
     logging.info('Loaded Model Weight from %s' % args.test_model_path)  
 
+    if args.featype == 'OpenMeta':
+        config = run_test_fsl(model, meta_test_loader,config)
+        logging.info('Result for %d-shot:' % (args.n_shots))
+        for k, v in config.items():
+            if k == 'data':
+                for k1,v1 in v.items():
+                    logging.info('\t\t{}: {}'.format(k1, v1))
+            else:
+                logging.info('\t{}: {}'.format(k, v))
 
-    config = run_test_fsl(model, meta_test_loader,config)
-    logging.info('Result for %d-shot:' % (args.n_shots))
-    for k, v in config.items():
-        if k == 'data':
-            for k1,v1 in v.items():
-                logging.info('\t\t{}: {}'.format(k1, v1))
-        else:
-            logging.info('\t{}: {}'.format(k, v))
+    else:
+        result = run_test_gfsl(model, meta_test_loader)
+        logging.info('Result for %d-shot:' % (args.n_shots))
+        logging.info('\t Arithmetic Mean: {}'.format(result[0]))
+        logging.info('\t Harmonic Mean: {}'.format(result[1]))
+        logging.info('\t Delta: {}'.format(result[2]))
+        logging.info('\t AUROC: {}'.format(result[3]))
+        logging.info('\t F1: {}'.format(result[4]))
+
 
 if __name__ == "__main__":
     torch.manual_seed(args.seed)
@@ -89,11 +100,16 @@ if __name__ == "__main__":
                 handlers = handlers)
 
     model_dir = args.test_model_path
-    _, meta_test_loader, n_cls = get_dataloaders(args,'openmeta')
+    mode = 'openmeta' if args.featype == 'OpenMeta' else 'gopenmeta'
+    _, meta_test_loader, n_cls = get_dataloaders(args, mode)
 
     params = torch.load(args.pretrained_model_path)['params']
     cls_params = {k: v for k, v in params.items() if 'cls_classifier' in k}
-    model = FeatureNet(args, args.restype, n_cls, (cls_params, meta_test_loader.dataset.vector_array))
+
+    if args.featype == 'OpenMeta':
+        model = FeatureNet(args, args.restype, n_cls, (cls_params, meta_test_loader.dataset.vector_array))
+    else:
+        model = GFeatureNet(args, args.restype, n_cls, (cls_params, meta_test_loader.dataset.vector_array))
 
     
     if torch.cuda.is_available():
