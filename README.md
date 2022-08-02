@@ -10,7 +10,7 @@ This repo is tested with Python 3.6, Pytorch 1.8, CUDA 10.1. More recent version
 MiniImageNet image data are provided by [RFS](https://github.com/WangYueFt/rfs), available at [DropBox](https://www.dropbox.com/sh/6yd1ygtyc3yd981/AABVeEqzC08YQv4UZk7lNHvya?dl=0). We also provide the word embeddings for the class names [here](https://drive.google.com/file/d/1CpF3M_qySCBhIWOSURIT_LpA1B61tsFb/view?usp=sharing). For TieredImageNet, we use the image data and word embeddings provided by [AW3](https://github.com/ServiceNow/am3), available at [GoogleDrive](https://drive.google.com/file/d/1Letu5U_kAjQfqJjNPWS_rdjJ7Fd46LbX/view). Download and put them under your <*data_dir*>.
 
 
-## Pretrained models
+## Pre-trained models
 We provide the pre-trained models for TieredImageNet and MiniImageNet, which can be downloaded [here](https://drive.google.com/drive/folders/1mj8j5ZChRFLcYMBWEsBBhst8uQTOz_WJ?usp=sharing). Save the pre-trained model to <*pretrained_model_path*>.
 
 ## Training 
@@ -41,7 +41,11 @@ python test.py --dataset <dataset>  --data_root <data_dir> \
                --seed <seed> 
 ```
 
-
+## Pre-training
+We also provide the code for the pre-training stage under `pretrain` folder. An example of running command for pre-training on miniImageNet:
+```
+python batch_process.py --featype EntropyRot --learning_rate 0.05
+```
 
 ## Citation
 If you find this repo useful for your research, please consider citing the paper:
